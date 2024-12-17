@@ -12,19 +12,32 @@ typedef struct {
   size_t elem_sz;
 } DynamicArray_t;
 
+// dont use unless you really know what you are doing
 int da_init_raw(DynamicArray_t *da, size_t initial_cap, size_t elem_sz);
 void *da_get_raw(DynamicArray_t *da, size_t idx);
 int da_grow(DynamicArray_t *da);
-int da_push(DynamicArray_t *da, void *el);
-int da_pop(DynamicArray_t *da, void *dst);
 int da_shrink(DynamicArray_t *da);
 
-#ifdef IMPL_DA
+// use these, as a normal person ought to
+//
+// initialize a dynamic array with an initial capacity of 'cap' elements with
+// type 'type'
 #define da_init(da, cap, type) (da_init_raw(da, cap, sizeof(type)))
+// append an element at the end of the dynamic array
+int da_push(DynamicArray_t *da, void *el);
+// get a reference to the element of the array at index 'idx'
+// unlike da_get_raw this macro is safe to call with any index and will just
+// return NULL if that index is out of range(aka will lead to segfaults on oob
+// access)
 #define da_get(da, idx, type)                                                  \
   ((type *)(idx <= (da)->len ? da_get_raw(da, idx) : NULL))
+// remove an element from the end of the dynamic array and store it at the
+// location 'dst' points to
+int da_pop(DynamicArray_t *da, void *dst);
+// clean a dynamic array up
 void da_deinit(DynamicArray_t *da);
 
+#ifdef IMPL_DA
 int da_init_raw(DynamicArray_t *da, size_t initial_cap, size_t elem_sz) {
   da->buf = malloc(initial_cap * elem_sz);
   if (!da->buf)
@@ -58,7 +71,9 @@ int da_push(DynamicArray_t *da, void *el) {
       return 0;
   }
 
-  // da_get is blind so it might return an invalid address
+  // da_get_raw is blind so it might return an invalid address
+  // ignore that case since we know we are in the dynamic array(we resized
+  // before)
   void *target = da_get_raw(da, da->len);
   memcpy(target, el, da->elem_sz);
 
