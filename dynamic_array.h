@@ -13,12 +13,11 @@ typedef struct {
 int da_init_raw(DynamicArray_t *da, size_t initial_cap, size_t elem_sz);
 void *da_get_raw(DynamicArray_t *da, size_t idx);
 int da_resize(DynamicArray_t *da);
-int da_push_raw(DynamicArray_t *da, void *el);
+int da_push(DynamicArray_t *da, void *el);
 
 #define da_init(da, cap, type) (da_init_raw(da, cap, sizeof(type)))
 #define da_get(da, idx, type)                                                  \
   ((type *)(idx <= (da)->len ? da_get_raw(da, idx) : NULL))
-#define da_push(da, el) (da_push_raw(da, &el))
 void da_deinit(DynamicArray_t *da);
 
 #ifdef IMPL_DA
@@ -50,7 +49,7 @@ int da_resize(DynamicArray_t *da) {
   return 1;
 }
 
-int da_push_raw(DynamicArray_t *da, void *el) {
+int da_push(DynamicArray_t *da, void *el) {
   if (da->len == da->cap) {
     // attempt to double it's size
     if (!da_resize(da))
@@ -72,6 +71,5 @@ void da_deinit(DynamicArray_t *da) {
 }
 
 #endif
-
 #define DA_H
 #endif

@@ -16,7 +16,7 @@ int main(void) {
     return 1;
 
   for (int i = 0; i < 100; i++)
-    da_push(&da, i);
+    da_push(&da, &i);
 
   for (size_t i = 0; i < da.len; i++)
     printf("%d\n", *da_get(&da, i, int));
@@ -31,7 +31,7 @@ int main(void) {
   Asd_t v = {.x = 12,
              .y = malloc(sizeof(char *)),
              .name = "Asdasdasdasdasdasdasdasdassssssssssssssssss"};
-  da_push(&new_arr, v);
+  da_push(&new_arr, &v);
 
   free(v.y);
   for (size_t i = 0; i < new_arr.len; i++)
