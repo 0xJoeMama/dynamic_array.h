@@ -21,6 +21,13 @@ int main(void) {
   for (size_t i = 0; i < da.len; i++)
     printf("%d\n", *da_get(&da, i, int));
 
+  printf("\nLength is : %zu, cap is : %zu\n", da.len, da.cap);
+  int curr;
+  while (da_pop(&da, &curr))
+    printf("%d ", curr);
+
+  printf("\nLength is : %zu, cap is : %zu\n", da.len, da.cap);
+
   da_deinit(&da);
 
   DynamicArray_t new_arr;
