@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
-DA_DECLARE(int);
-DA_DECLARE(char);
+DA_IMPL(int);
+DA_IMPL(char);
 
 typedef struct as {
   int x;
@@ -15,7 +15,7 @@ typedef struct {
   char name[200];
 } Asd_t;
 
-DA_DECLARE(Asd_t);
+DA_IMPL(Asd_t);
 
 int main(void) {
   DynamicArray_t(int) da;
@@ -55,9 +55,9 @@ int main(void) {
 
   // Hey! Vsauce. Michael here.
   // *This* is a string. Or is it?
-
   DynamicArray_t(char) is_this_a_string;
   da_init(&is_this_a_string, 10, char);
+
   char asd[] = "asdasdasdasdasd";
   for (size_t i = 0; i < sizeof(asd) / sizeof(char); i++)
     da_push(&is_this_a_string, asd[i], char);

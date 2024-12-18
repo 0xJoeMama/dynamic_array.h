@@ -3,14 +3,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define COMMAND(name) {#name, name##_cmd}
 #define FUDGE 2
 
 #define DynamicArray_t(type) DynamicArray_##type##_t
 #define DynamicArray(type) DynamicArray_##type
 
-// TODO: ifdef for implementation code
 #define DA_DECLARE(type)                                                       \
+  struct DynamicArray(type) {                                                  \
+    type *buf;                                                                 \
+    size_t cap;                                                                \
+    size_t len;                                                                \
+  };                                                                           \
+  int da_init_##type(struct DynamicArray(type) * da, size_t initial_cap);      \
+  type *da_get_raw_##type(struct DynamicArray(type) * da, size_t idx);         \
+  int da_grow_##type(struct DynamicArray(type) * da);                          \
+  int da_push_##type(struct DynamicArray(type) * da, type el);                 \
+  void da_deinit_##type(struct DynamicArray(type) * da);                       \
+  int da_shrink_##type(struct DynamicArray(type) * da);                        \
+  int da_pop_##type(struct DynamicArray(type) * da, type * dst);               \
+  typedef struct DynamicArray(type) DynamicArray_t(type)
+
+// TODO: ifdef for implementation code
+#define DA_IMPL(type)                                                          \
   struct DynamicArray(type) {                                                  \
     type *buf;                                                                 \
     size_t cap;                                                                \
@@ -67,7 +81,7 @@
     /* we can't shrink if we have more than half our capacity                  \
     we also can't shrink if we have capacity one because of portability        \
     issues(man realloc) */                                                     \
-    if ((da->len >= da->cap / FUDGE) || da->cap == 1)                          \
+    if ((da->len >= da->cap / FUDGE) || da->cap <= 1)                          \
       return 1;                                                                \
                                                                                \
     void *new_buf = realloc(da->buf, da->cap / FUDGE * sizeof(type));          \
