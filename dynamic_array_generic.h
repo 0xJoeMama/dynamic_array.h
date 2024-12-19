@@ -6,9 +6,9 @@
 #define FUDGE 2
 
 // needed to force the preprocessor to do cursed stuff
-#define da_expand_type(type) DynamicArray_##type
-#define DynamicArray_t(type) da_expand_type(type) _t
-#define DynamicArray(type) da_expand_type(type)
+#define da_expand_type(type) DynamicArray_##type##_t
+#define DynamicArray_t(type) da_expand_type(type)
+#define DynamicArray(type) DynamicArray_##type
 #define da_function(ret_type, name, da_type, ...)                              \
   ret_type name##_##da_type(__VA_ARGS__)
 #define da_function_call(name, da_type, ...) name##_##da_type(__VA_ARGS__)

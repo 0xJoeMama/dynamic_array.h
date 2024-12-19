@@ -15,7 +15,12 @@ typedef struct {
   char name[200];
 } Asd_t;
 
+// array
 DA_IMPL(Asd_t);
+// array of arrays
+DA_IMPL(DynamicArray_t(Asd_t));
+// array of arrays of arrays
+DA_IMPL(DynamicArray_t(DynamicArray_t(Asd_t)));
 
 int main(void) {
   DynamicArray_t(int) da;
