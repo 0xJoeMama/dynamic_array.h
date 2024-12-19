@@ -122,12 +122,13 @@
                                                                                \
   typedef struct DynamicArray(type) DynamicArray_t(type)
 
-#define da_init(da, initial_cap, type) (da_init_##type(da, initial_cap))
+#define da_init(da, initial_cap, type)                                         \
+  (da_function_call(da_init, type, da, initial_cap))
 #define da_get(da, idx, type)                                                  \
-  (idx < (da)->len ? da_get_raw_##type(da, idx) : NULL)
-#define da_push(da, el, type) (da_push_##type(da, el))
-#define da_deinit(da, type) (da_deinit_##type(da))
-#define da_pop(da, dst, type) (da_pop_##type(da, dst))
+  (idx < (da)->len ? da_function_call(da_get_raw, type, da, idx) : NULL)
+#define da_push(da, el, type) (da_function_call(da_push, type, da, el))
+#define da_deinit(da, type) (da_function_call(da_deinit, type, da))
+#define da_pop(da, dst, type) (da_function_call(da_pop, type, da, dst))
 
 #define DA_NEW_IMPL
 #endif
