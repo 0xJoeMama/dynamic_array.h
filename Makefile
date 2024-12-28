@@ -5,4 +5,4 @@ BINS=dynamic_array_tests
 all: $(BINS)
 
 clean:
-	rm -rf $(BINS)
+	rm -rf $(BINS) compile_commands.json .cache
