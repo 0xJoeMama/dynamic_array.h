@@ -1,6 +1,6 @@
-CC=clang
+CC=gcc
 CFLAGS=-O3 -Wall -Wextra -Werror -pedantic -std=c99
-BINS=dynamic_array_tests dynamic_array_tests_new
+BINS=dynamic_array_tests
 
 all: $(BINS)
 

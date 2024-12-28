@@ -1,126 +1,148 @@
-#ifndef DA_H
+#ifndef DA_NEW_IMPL
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define FUDGE 2
 
-typedef struct {
-  void *buf;
-  size_t cap;
-  size_t len;
-  size_t elem_sz;
-} DynamicArray_t;
+// needed to force the preprocessor to do cursed stuff
+#define da_expand_type(type) DynamicArray_##type##_t
+#define DynamicArray_t(type) da_expand_type(type)
+#define DynamicArray(type) DynamicArray_##type
+#define da_function(ret_type, name, da_type, ...)                              \
+  ret_type name##_##da_type(__VA_ARGS__)
+#define da_function_call(name, da_type) name##_##da_type
 
-// dont use unless you really know what you are doing
-int da_init_raw(DynamicArray_t *da, size_t initial_cap, size_t elem_sz);
-void *da_get_raw(DynamicArray_t *da, size_t idx);
-int da_grow(DynamicArray_t *da);
-int da_shrink(DynamicArray_t *da);
+#define DA_DECLARE(type)                                                       \
+  struct DynamicArray(type) {                                                  \
+    type *buf;                                                                 \
+    size_t cap;                                                                \
+    size_t len;                                                                \
+  };                                                                           \
+  da_function(int, da_init, type, struct DynamicArray(type) * da,              \
+              size_t initial_cap);                                             \
+  da_function(type *, da_get_raw, type, struct DynamicArray(type) * da,        \
+              size_t idx);                                                     \
+  da_function(int, da_grow, type, struct DynamicArray(type) * da);             \
+  da_function(int, da_push, type, struct DynamicArray(type) * da, type el);    \
+  da_function(void, da_deinit, type, struct DynamicArray(type) * da);          \
+  da_function(int, da_shrink, type, struct DynamicArray(type) * da);           \
+  da_function(int, da_pop, type, struct DynamicArray(type) * da, type * dst);  \
+  da_function(type *, da_get, type, struct DynamicArray(type) * da,            \
+              size_t idx);                                                     \
+  typedef struct DynamicArray(type) DynamicArray_t(type)
 
-// use these, as a normal person ought to
-//
-// initialize a dynamic array with an initial capacity of 'cap' elements with
-// type 'type'
-#define da_init(da, cap, type) (da_init_raw(da, cap, sizeof(type)))
-// append an element at the end of the dynamic array
-int da_push(DynamicArray_t *da, void *el);
-// get a reference to the element of the array at index 'idx'
-// unlike da_get_raw this macro is safe to call with any index and will just
-// return NULL if that index is out of range(aka will lead to segfaults on oob
-// access)
-#define da_get(da, idx, type)                                                  \
-  ((type *)(idx <= (da)->len ? da_get_raw(da, idx) : NULL))
-// remove an element from the end of the dynamic array and store it at the
-// location 'dst' points to
-int da_pop(DynamicArray_t *da, void *dst);
-// clean a dynamic array up
-void da_deinit(DynamicArray_t *da);
+// TODO: ifdef for implementation code
+#define DA_IMPL(type)                                                          \
+  struct DynamicArray(type) {                                                  \
+    type *buf;                                                                 \
+    size_t cap;                                                                \
+    size_t len;                                                                \
+  };                                                                           \
+                                                                               \
+  da_function(int, da_init, type, struct DynamicArray(type) * da,              \
+              size_t initial_cap) {                                            \
+    da->buf = malloc(initial_cap * sizeof(type));                              \
+    if (!da->buf)                                                              \
+      return 0;                                                                \
+                                                                               \
+    da->cap = initial_cap;                                                     \
+    da->len = 0;                                                               \
+                                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  da_function(type *, da_get_raw, type, struct DynamicArray(type) * da,        \
+              size_t idx) {                                                    \
+    return da->buf + idx;                                                      \
+  }                                                                            \
+                                                                               \
+  da_function(int, da_grow, type, struct DynamicArray(type) * da) {            \
+    void *new_buf = realloc(da->buf, da->cap * FUDGE * sizeof(type));          \
+    if (!new_buf)                                                              \
+      return 0;                                                                \
+                                                                               \
+    da->buf = (type *)new_buf;                                                 \
+    da->cap *= FUDGE;                                                          \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  da_function(int, da_push, type, struct DynamicArray(type) * da, type el) {   \
+    if (da->len == da->cap) {                                                  \
+      /* attempt to grow if we don't have room */                              \
+      if (!da_function_call(da_grow, type)(da))                                \
+        return 0;                                                              \
+    }                                                                          \
+    /* da_get_raw is blind so it might return an invalid address               \
+      ignore that case since we know we are in the dynamic array(we resized    \
+      *before) */                                                              \
+    type *target = da_function_call(da_get_raw, type)(da, da->len);            \
+    memcpy(target, &el, sizeof(type));                                         \
+    da->len++;                                                                 \
+                                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  da_function(void, da_deinit, type, struct DynamicArray(type) * da,           \
+              void (*destroy)(type)) {                                         \
+    if (destroy) {                                                             \
+      for (size_t i = 0; i < da->len; i++)                                     \
+        destroy(da->buf[i]);                                                   \
+    }                                                                          \
+                                                                               \
+    free(da->buf);                                                             \
+    memset(da, 0, sizeof(struct DynamicArray(type)));                          \
+  }                                                                            \
+                                                                               \
+  da_function(int, da_shrink, type, struct DynamicArray(type) * da) {          \
+    /* we can't shrink if we have more than half our capacity                  \
+    we also can't shrink if we have capacity one because of portability        \
+    issues(man realloc) */                                                     \
+    if ((da->len >= da->cap / FUDGE) || da->cap <= 1)                          \
+      return 1;                                                                \
+                                                                               \
+    void *new_buf = realloc(da->buf, da->cap / FUDGE * sizeof(type));          \
+    if (!new_buf)                                                              \
+      return 0;                                                                \
+                                                                               \
+    da->buf = (type *)new_buf;                                                 \
+    da->cap /= FUDGE;                                                          \
+                                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  da_function(type *, da_get, type, struct DynamicArray(type) * da,            \
+              size_t idx) {                                                    \
+    if (idx >= (da)->len)                                                      \
+      return NULL;                                                             \
+                                                                               \
+    return da_function_call(da_get_raw, type)(da, idx);                        \
+  }                                                                            \
+                                                                               \
+  da_function(int, da_pop, type, struct DynamicArray(type) * da, type * dst) { \
+    /* make sure we have at least 1 element */                                 \
+    if (da->len == 0)                                                          \
+      return 0;                                                                \
+                                                                               \
+    da->len = da->len - 1; /* reduce our length */                             \
+    /* get the last element */                                                 \
+    type *element = da_function_call(da_get_raw, type)(da, da->len);           \
+    memcpy(dst, element, sizeof(type)); /* copy it into the dst pointer */     \
+                                                                               \
+    /* if shrinking fails it means nothing to us since our job is to just      \
+    remove an element */                                                       \
+    da_function_call(da_shrink, type)(da);                                     \
+                                                                               \
+    return 1;                                                                  \
+  }                                                                            \
+                                                                               \
+  typedef struct DynamicArray(type) DynamicArray_t(type)
 
-#ifdef IMPL_DA
-int da_init_raw(DynamicArray_t *da, size_t initial_cap, size_t elem_sz) {
-  da->buf = malloc(initial_cap * elem_sz);
-  if (!da->buf)
-    return 0;
+#define da_init(type) da_function_call(da_init, type)
+#define da_get(type) da_function_call(da_get, type)
+#define da_push(type) da_function_call(da_push, type)
+#define da_pop(type) da_function_call(da_pop, type)
+#define da_deinit(type) da_function_call(da_deinit, type)
 
-  da->cap = initial_cap;
-  da->len = 0;
-  da->elem_sz = elem_sz;
-
-  return 1;
-}
-
-void *da_get_raw(DynamicArray_t *da, size_t idx) {
-  return (void *)((char *)da->buf + idx * da->elem_sz);
-}
-
-int da_grow(DynamicArray_t *da) {
-  void *new_buf = realloc(da->buf, da->cap * FUDGE * da->elem_sz);
-  if (!new_buf)
-    return 0;
-
-  da->buf = new_buf;
-  da->cap *= FUDGE;
-  return 1;
-}
-
-int da_push(DynamicArray_t *da, void *el) {
-  if (da->len == da->cap) {
-    // attempt to grow if we don't have room
-    if (!da_grow(da))
-      return 0;
-  }
-
-  // da_get_raw is blind so it might return an invalid address
-  // ignore that case since we know we are in the dynamic array(we resized
-  // before)
-  void *target = da_get_raw(da, da->len);
-  memcpy(target, el, da->elem_sz);
-
-  da->len++;
-
-  return 1;
-}
-
-void da_deinit(DynamicArray_t *da) {
-  free(da->buf);
-  memset(da, 0, sizeof(DynamicArray_t));
-}
-
-int da_shrink(DynamicArray_t *da) {
-  // we can't shrink if we have more than half our capacity
-  // we also can't shrink if we have capacity one because of portability
-  // issues(man realloc)
-  if ((da->len >= da->cap / FUDGE) || da->cap == 1)
-    return 1;
-
-  void *new_buf = realloc(da->buf, da->cap / FUDGE * da->elem_sz);
-  if (!new_buf)
-    return 0;
-
-  da->buf = new_buf;
-  da->cap /= FUDGE;
-
-  return 1;
-}
-
-int da_pop(DynamicArray_t *da, void *dst) {
-  // make sure we have at least 1 element
-  if (da->len == 0)
-    return 0;
-
-  da->len = da->len - 1;                   // reduce our length
-  void *element = da_get_raw(da, da->len); // get the last element
-  memcpy(dst, element, da->elem_sz);       // copy it into the dst pointer
-
-  // if shrinking fails it means nothing to us since our job is to just remove
-  // an element
-  da_shrink(da);
-
-  return 1;
-}
-
-#endif
-
-#define DA_H
+#define DA_NEW_IMPL
 #endif
