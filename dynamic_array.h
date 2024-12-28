@@ -42,7 +42,7 @@
                                                                                \
   da_function(int, da_init, type, struct DynamicArray(type) * da,              \
               size_t initial_cap) {                                            \
-    da->buf = malloc(initial_cap * sizeof(type));                              \
+    da->buf = (type *)malloc(initial_cap * sizeof(type));                      \
     if (!da->buf)                                                              \
       return 0;                                                                \
                                                                                \
